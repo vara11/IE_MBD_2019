@@ -1,0 +1,424 @@
+---
+  title: "Data Visualization"
+author: "Group C"
+date: "September 27, 2019"
+output:
+  html_document: default
+pdf_document: default
+---
+  
+  ```{r setup, include = FALSE, eval = TRUE, message = FALSE, warning = FALSE, echo = FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(out.width='750px', dpi=200)
+```
+
+```{r pressure, include = FALSE, eval = TRUE, message = FALSE, warning = FALSE, echo = FALSE}
+if(!'data.table'%in%installed.packages()){
+  install.packages('data.table')}
+if(!'treemapify'%in%installed.packages()){
+  install.packages('treemapify')}
+if(!'waffle'%in%installed.packages()){
+  install.packages('waffle')}
+if(!'RColorBrewer'%in%installed.packages()){
+  install.packages('RColorBrewer')}
+if(!'gtable'%in%installed.packages()){
+  install.packages('gtable')}
+if(!'tidyverse'%in%installed.packages()){
+  install.packages('tidyverse')}
+if(!'maps'%in%installed.packages()){
+  install.packages('maps')}
+if(!'viridis'%in%installed.packages()){
+  install.packages('viridis')}
+if(!'grid'%in%installed.packages()){
+  install.packages('grid')}
+if(!'readxl'%in%installed.packages()){
+  install.packages('readxl')}
+if(!'mosaic'%in%installed.packages()){
+  install.packages('mosaic')}
+if(!'ggthemes'%in%installed.packages()){
+  install.packages('ggthemes')}
+
+library(data.table)
+library(treemapify)
+library(waffle)
+library(RColorBrewer)
+library(gtable)
+library(tidyverse)
+require(maps)
+require(viridis)
+library(grid)
+library(readxl)
+library(mosaic)
+library(ggthemes)
+
+df <- data.table(readxl::read_xlsx("D:/IE Coursework/Term 2/Data Viz/AMEX 2016 Spending.xlsx"), 
+                 row.names = seq(1,110))
+```
+
+
+## Theme Setting:
+
+A custom theme is created to be used throughout the visualizations. The main colors are defined beforehand to avoid hard coding.
+
+```{r, eval=T, fig.width=7, fig.height=6, echo = FALSE}
+
+# Defining the main colors:
+fill_color = '#C7522B'
+decoration_color = '#686868'
+main1_color = '#61795B'
+main2_color = '#9DB469'
+
+#Create a theme we can apply everywhere 
+group_c_theme<-theme_bw() + theme(
+  panel.grid.major = element_blank(), 
+  panel.grid.minor = element_blank(),
+  axis.title = element_text(size = 10, hjust = 0.5, color = decoration_color),
+  axis.text = element_text(colour = decoration_color, size = 8),
+  axis.ticks = element_blank(),
+  axis.line = element_line(colour = decoration_color, size=0.3, linetype = '1F'), 
+  panel.border = element_blank(),
+  panel.grid = element_blank(),
+  strip.text = element_text(size = 12, color = decoration_color),
+  strip.background =element_blank(),
+  legend.position="None",
+  plot.background = element_rect(fill = "#f5f5f2", color = NA), 
+  panel.background = element_rect(fill = "#f5f5f2", color = NA),
+  plot.title = element_text(size = 26, hjust = 0.5,  color = decoration_color)
+)
+
+#Now we set the new defined theme to the default option 
+theme_set(group_c_theme)
+
+```
+
+# **An investigation into US citizen 'Andy Dufresne' conducted by the FBI, with specific focus on American Express blue card expenditures**
+
+
+## Exploratory Data Analysis:
+
+We first became aware of the suspect when our partners at American Express flagged an anomalously large transaction on his American Express blue card. We proceeded to pull his annual data in order to investigate for further suspicious behaviour.
+
+The first step is to get a summary of the data as well as information regarding the data types. This sets the stage for all visualizations, as a good understanding of the data at hand allows for proper investigation.
+
+```{r, fig.width=7, fig.height=6, message = FALSE, warning = FALSE, echo = FALSE}
+head(df)
+summary(df)
+str(df)
+```
+
+
+
+## Baseline Expenditures Analysis:
+
+Starting this section, we take a look at Andy's expenses. The first chart we create plots time vs money spent. This is done in order to assess the full shape of the data, and to see if the large transaction - that of a Nissan automobile in December of the dataset - represented an outlier or fit with the suspect's usual purchasing activity. This chart reveals that the purchase was indeed an outlier.
+
+To place this outlier in perspective we create a cumulative chart. This helps decrease the effect of the outlier on the data, and allows a clearer analysis of the rest of the year's purchasing data.
+
+```{r, eval=T, fig.width=7, fig.height=6, echo = FALSE}
+
+# Spendings per time 
+(amount_vs_time <- ggplot(df, aes(x=Date, y=Amount)) + geom_line(color = main1_color) 
++ labs(title = "Spendings over time")+ xlab(""))+ ylab("Spendings")
+
+# Accumulated spendings over the year
+(cumul_amount_vs_time <- ggplot(df, aes(x=Date)) + geom_ribbon(aes(ymin = 0, ymax = cumsum(Amount)), 
+fill = main2_color, alpha = 0.7) + 
+geom_line(aes(y = cumsum(Amount)),color = main1_color)+
+labs(title = "Accumulated spendings over time") + xlab("") + ylab("Cumulated Spendings"))
+```
+
+In order to dig deeper into the suspect's behaviour, an analysis of his purchased items is necessary; to see if they were in keeping with that of a citizen matching his profile. A treemap is assembled, showing that (taking account of the outlier) the majority of his purchases were on mundane everyday items one would expect from a law-abiding citizen. The only suspicious aspect revolved around an unusually large travel spend over the year.
+
+```{r, echo = FALSE}
+# Building a simple barplot overviewing the number of purchases per category
+
+ggplot(df, aes(x=Category)) + geom_bar(stat='count', fill = fill_color, alpha = 0.8)+ theme(axis.text.x = element_text(angle = 90, hjust = 1)) + ylab("Number of transactions") + xlab("") + scale_x_discrete(limits = c("Communications", "Entertainment", "Business Services", "Other", "Restaurant", "Transportation", "Travel", "Merchandise & Supplies"))
+
+
+# Calculating total amount of spendings per category and subcategory
+df_treemap <- df[,list(Total_amount = sum(Amount)), by = c('Category', 'Subcategory')]
+
+#  Creating a treemap with custom colours divided by spendings per category and subcategory
+(categories_treemap <- ggplot(df_treemap, aes(area=Total_amount, label=Subcategory, 
+                                              fill = Category, subgroup=Category, subgroup2 = Subcategory)) + geom_treemap(alpha = 0.9) 
+  + geom_treemap_text(place='centre')) + 
+  geom_treemap_subgroup_border(color = "#303030", size = 2 ) + 
+  geom_treemap_subgroup2_border(color = "#303030", size = 0.5) + 
+  theme(legend.position="bottom", 
+        legend.background = element_rect(fill = "#f5f5f2", color = NA)) +
+  scale_fill_manual(values = c("#A46B2C", "#C7522B", "#8A9B77", "#F7D086",
+                               "#E2E0B3", "#D07D41", "#61795B", "#9DB469"))
+```
+
+
+
+## Removing the Outlier:
+
+We take a closer look at Andy's expenses on a daily level, excluding abnomal auto expenses. We begin to track the suspect's movements around the US, UK and Europe in order to discover if there has been any suspicious increases.
+
+```{r, eval=T, fig.width=7, fig.height=6, echo = FALSE}
+
+### Transforming the data for Tufte chart
+
+df_tufte <- df %>%
+  filter(Subcategory != "Auto Services") %>%
+  mutate(Country_group = derivedFactor(
+    "Europe" = Country %in% c('Luxembourg', 'Germany', 'Sweden', 'Denmark', 'Netherlands', 'Ireland',
+                              'Czech Republic','Portugal','France'), 
+    "USA" = Country %in% c('United States'), 
+    "UK" = Country %in% c('United Kingdom')
+  ))
+
+
+# Tufte boxplot without outlier purchase of the car
+ggplot(df_tufte, aes(Country_group,Amount)) + 
+  geom_tufteboxplot(outlier.colour="transparent", size=0.7, color=main1_color) +
+  labs(title = 'Spendings per region without the car') + xlab("")
+
+```
+
+
+
+## Quarterly Expenditure Analysis:
+
+Our focus shifts towards Andy's expenses over time for different categories. We look at how much money he has spent on specific categories during the year. A quarterly analysis is then undertaken in order to determine if there had been a pattern to the suspect's purchases leading up to the anomalous transaction. This reveals a sudden unexplained shift in behaviour, as the suspect appears to have developed an overnight interest in September of the dataset in purchasing expensive tickets for music and entertainment events.
+
+The data is presented in a waffle chart.
+
+```{r, eval=T, fig.width=9, fig.height=12, echo = FALSE}
+
+##### WAFFLE 
+
+# Transforming data to get percentage of spending per category and quarter 
+seasonal_data <- df %>%
+  mutate(quarter = quarters(Date))
+
+business_services <- seasonal_data %>%
+  filter(Category == 'Business Services') %>%
+  group_by(quarter) %>%
+  summarise(num_obs = n()) %>%
+  mutate(percent = round(num_obs/sum(num_obs)*100))
+
+# Defining the labels for the legend
+business_services_percent <- business_services$percent
+names(business_services_percent) <- business_services$quarter
+
+communications <- seasonal_data %>%
+  filter(Category == 'Communications') %>%
+  group_by(quarter) %>%
+  summarise(num_obs = n()) %>%
+  mutate(percent = round(num_obs/sum(num_obs)*100))
+
+communications_percent <- communications$percent
+names(communications_percent) <- communications$quarter
+
+entertainment <- seasonal_data %>%
+  filter(Category == 'Entertainment') %>%
+  group_by(quarter) %>%
+  summarise(num_obs = n()) %>%
+  mutate(percent = round(num_obs/sum(num_obs)*100))
+
+entertainment_percent <- entertainment$percent
+names(entertainment_percent) <- entertainment$quarter
+
+merch <- seasonal_data %>%
+  filter(Category == 'Merchandise & Supplies') %>%
+  group_by(quarter) %>%
+  summarise(num_obs = n()) %>%
+  mutate(percent = round(num_obs/sum(num_obs)*100))
+
+merch_percent <- merch$percent
+names(merch_percent) <- merch$quarter
+
+other <- seasonal_data %>%
+  filter(Category == 'Other') %>%
+  group_by(quarter) %>%
+  summarise(num_obs = n()) %>%
+  mutate(percent = round(num_obs/sum(num_obs)*100))
+
+other_percent <- other$percent
+names(other_percent) <- other$quarter
+
+restaurant <- seasonal_data %>%
+  filter(Category == 'Restaurant') %>%
+  group_by(quarter) %>%
+  summarise(num_obs = n()) %>%
+  mutate(percent = round(num_obs/sum(num_obs)*100))
+
+restaurant_percent <- restaurant$percent
+names(restaurant_percent) <- restaurant$quarter
+
+transportation <- seasonal_data %>%
+  filter(Category == 'Transportation') %>%
+  group_by(quarter) %>%
+  summarise(num_obs = n()) %>%
+  mutate(percent = round(num_obs/sum(num_obs)*100))
+
+transportation_percent <- transportation$percent
+names(transportation_percent) <- transportation$quarter
+
+travel <- seasonal_data %>%
+  filter(Category == 'Travel') %>%
+  group_by(quarter) %>%
+  summarise(num_obs = n()) %>%
+  mutate(percent = round(num_obs/sum(num_obs)*100))
+
+travel_percent <- travel$percent
+names(travel_percent) <- travel$quarter
+
+iron(
+  waffle::waffle(business_services_percent, rows=5, xlab = "Business Services", 
+                 colors = c(main1_color, "#F7D086", fill_color), keep = FALSE,legend = "none"),
+  waffle::waffle(communications_percent, rows=5, xlab = "Communications", 
+                 colors = c(main1_color), keep = FALSE, legend = "none"),
+  waffle::waffle(entertainment_percent, rows=5, xlab = "Entertainment", 
+                 colors = c("#F7D086", fill_color), keep = FALSE, legend = "none"),
+  waffle::waffle(merch_percent, rows=5, xlab = "Merchandise & Supplies", 
+                 colors = c(main1_color, main2_color, "#F7D086", fill_color), keep = FALSE, legend = "none"),
+  waffle::waffle(other_percent, rows=5, xlab = "Other", 
+                 colors = c(main1_color, "#F7D086", fill_color), keep = FALSE, legend = "none"),
+  waffle::waffle(restaurant_percent, rows=5, xlab = "Restaurant", 
+                 colors = c(main1_color, main2_color, "#F7D086", fill_color), keep = FALSE, legend = "none"),
+  waffle::waffle(transportation_percent, rows=5, xlab = "Transportation", 
+                 colors = c(main1_color, main2_color, "#F7D086", fill_color), keep = FALSE, legend = "none"),
+  waffle::waffle(travel_percent, rows=5, xlab = "Travel", 
+                 colors = c(main1_color, main2_color, "#F7D086", fill_color), keep = FALSE, legend_pos = "bottom")
+)
+
+
+```
+
+
+
+## Analyzing the Travel Patterns:
+
+In order to investigate the suspect's travel activities, and specifically to see if any purchases were made in countries deemed detrimental to America's international position, we charted the suspect's movements on a global map. A world map is constructed displaying Andy's expenses in each country. The countries Andy spent money in are colored, whereas the ones he did not spend money in are left blank. Different shades of color are used to highlight the amount of money spent in each country.
+
+This analysis reveals that the suspect's movements and international spending activities took place in low-threat states.
+
+```{r, eval=T, fig.width=12, fig.height=8, echo = FALSE}
+
+############# MAP
+
+# Creating a vector with the countries that Andy traveled to
+europe <- c('UK', 'Luxembourg', 'Germany', 'Sweden', 'Denmark', 'Netherlands', 'Ireland',
+'Czech Republic','Portugal','France', "USA")
+# Taking a set with coordinates of all the countries from the library maps
+world_map <- map_data('world')
+
+# Transforming our data: calculating total spendings per country, replacing some of the names of the countries
+# so that they correspond to the world map dataset with coordinates, joining our data with the world map
+# dataset so that we have coordinates for all the countries, filtering longtitude and latitude to zoom in
+# Replacing NAs, so that countries Andy didn't spend money in, will be displayed
+data_replaced <- df %>%
+  group_by(Country) %>%
+  summarise(total_spending = sum(Amount)) %>%
+  mutate(Country = replace(Country, Country =="United States", "USA")) %>%
+  mutate(Country = replace(Country, Country =="United Kingdom", "UK")) %>%
+  right_join(world_map, by = c("Country" = "region")) %>%
+  filter(lat >= 20, long <= 30) %>%
+  mutate(total_spending = replace_na(total_spending, -999))
+
+
+# Transforming total spendings to a discrete scale
+# Here we define equally spaced pretty breaks. They will be surrounded by the minimum value at the beginning
+# and the maximum value at the end. 
+
+pretty_breaks <- c(0,100,500,1000,5000,10000)
+# Find the extremes
+minVal <- min(data_replaced$total_spending, na.rm = T)
+maxVal <- round((max(data_replaced$total_spending, na.rm = T)),0)
+# Compute labels
+labels <- c()
+brks <- c(minVal, pretty_breaks, maxVal)
+
+for(idx in 1:length(brks)){  
+  labels <- c(labels,round(brks[idx + 1], 2))
+}
+labels <- labels[1:length(labels)-1]
+
+# Define a new variable on the data set just as above
+data_replaced$brks <- cut(data_replaced$total_spending, 
+                          breaks = brks, 
+                          include.lowest = TRUE, 
+                          labels = labels)
+# Set sclaes for our breaks
+brks_scale <- levels(data_replaced$brks)
+labels_scale <- rev(brks_scale)
+
+
+# Creating custom theme for the map
+theme_map <- function(...) {  
+  theme_minimal() +
+    theme(
+      text = element_text(color = "#22211d"),
+      axis.line = element_blank(),
+      axis.text.x = element_blank(),
+      axis.text.y = element_blank(),
+      axis.ticks = element_blank(),
+      axis.title.x = element_blank(),
+      axis.title.y = element_blank(),
+      panel.grid.major = element_blank() ,
+      panel.grid.minor = element_blank(),
+      plot.background = element_rect(fill = "#f5f5f2", color = NA), 
+      panel.background = element_rect(fill = "#f5f5f2", color = NA),
+      panel.border = element_blank(),
+      legend.position = c(0.15, 0.1),
+      legend.text.align = 0,
+      legend.text = element_text(size = 10, hjust = 0, color = "#4e4d47"),
+      plot.title = element_text(size = 28, hjust = 0.8, color = "#4e4d47"),
+      plot.subtitle = element_text(size = 22, hjust = 0.8, face = "italic", color = "#61795B"),
+      legend.title = element_text(size = 18),
+      plot.margin = unit(c(.5,.5,.2,.5), "cm"),
+      panel.spacing = unit(c(-.1,0.2,.2,0.2), "cm"),
+      plot.caption = element_text(size = 12, hjust = 0.92, color = "#61795B"),
+      ...
+    )
+}
+
+# Creating map
+(p <- ggplot(data = data_replaced, aes(x = long, 
+                                       y = lat, 
+                                       group = group)) +
+    # Country polygons
+    geom_tile(aes(fill = brks)) +
+    scale_alpha(name = "", range = c(0.6, 0), guide = F)  + 
+    geom_polygon(aes(fill = brks)) +
+    # Country outline
+    geom_path(data = data_replaced, aes(x = long, 
+                                        y = lat, 
+                                        group = group), 
+              color = "white", size = 0.1) +
+    theme_map() +
+    labs(x = NULL, 
+         y = NULL, 
+         title = "Andy's total spendings per country", 
+         subtitle = "Andy spent the majority of his money in UK and USA", 
+         caption = "Total spendings in Europe were 5 times less than in UK and USA" ) + 
+    scale_fill_manual(
+      values = c("#303030", "#61795B","#9DB469", "#E2E0B3", "#F7D086","#D07D41","#C7522B"),
+      name = "Total Spendings",
+      drop = FALSE,
+      guide = guide_legend(
+        direction = "horizontal",
+        keyheight = unit(4, units = "mm"),
+        keywidth = unit(100/length(labels), units = "mm"),
+        title.position = 'top',
+        title.hjust = 0.5,
+        label.hjust = 1,
+        nrow = 1,
+        byrow = T,
+        reverse = F,
+        label.position = "bottom"
+      )
+    ))
+
+
+```
+
+
+
+## Conclusion:
+
+The investigation into Suspect Andy Dusfresne concluded as follows. While some of the suspect's activities were unusual, the car purchase was the only true outlier in the data. As such, there was not enough evidence to pursue the investigation further, and the case is now closed pending further discrepancies.  
+  

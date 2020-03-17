@@ -4,7 +4,7 @@
 ## Data competitions:
 Python and R codes for Kaggle and other Data Science Competitions.
 1) House Prices: Advanced Regression Techniques: This is a competition on Kaggle whereby the objective is to predict the prices of houses. It was done as part of our Machine Learning II coursework using R. This was an individual project and a final result of 0.12768 was achieved.
-2) Pump it Pump: This is a Driven-Data competition done using data from Taarifa and the Tanzanian Ministry of Water where the objective is to predict which water pumps are functional or need repairs. It was done as a group assignment as part of our Machine Learning II coursework using Python. The final result achieved was a classification rate of 0.8171 (top 10%).
+2) Pump it Up: This is a Driven-Data competition done using data from Taarifa and the Tanzanian Ministry of Water where the objective is to predict which water pumps are functional or need repairs. It was done as a group assignment as part of our Machine Learning II coursework using Python. The final result achieved was a classification rate of 0.8171 (top 10%).
 
 ## Data Model (MySQL):
 Two data models (star-schema) were created as part of our SQL and Data warehousing courses using MySQL workbench. These models were:

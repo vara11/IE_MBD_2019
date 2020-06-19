@@ -31,7 +31,7 @@ Using IBM Watson, we developed a chatbot around a Children's Education company i
 A presentation and video that shows how computer vision could be used to build a fruit delivery business. Azure was used as the technology provider.
 
 ## Natural Language Processing (NLP):
-As part of our coursework, in groups of 2, we had to implement NLP techniques and methodologies to classify fake or real news on a dataset.
+As part of our coursework, I had to implement NLP techniques and methodologies to classify fake or real news on a dataset.
 
 ## Pentaho (ETL):
 Contains Pentaho files and the ETL flow for the social media marketing program.
